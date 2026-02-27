@@ -90,9 +90,15 @@ class CourseSearchTool(Tool):
         formatted = []
         sources: List[Dict] = []  # Track sources for the UI
 
+        seen = set()  # Deduplicate sources by (course_title, lesson_num)
+
         for doc, meta in zip(results.documents, results.metadata):
             course_title = meta.get('course_title', 'unknown')
             lesson_num = meta.get('lesson_number')
+
+            # ChromaDB may return integers as floats; normalize to int
+            if lesson_num is not None:
+                lesson_num = int(lesson_num)
 
             # Build context header
             header = f"[{course_title}"
@@ -100,18 +106,19 @@ class CourseSearchTool(Tool):
                 header += f" - Lesson {lesson_num}"
             header += "]"
 
-            # Build source name
-            name = course_title
-            if lesson_num is not None:
-                name += f" - Lesson {lesson_num}"
-
-            # Resolve lesson link URL
-            url = None
-            if lesson_num is not None:
-                url = self.store.get_lesson_link(course_title, lesson_num)
-
-            sources.append({"name": name, "url": url})
             formatted.append(f"{header}\n{doc}")
+
+            # Track unique sources only
+            key = (course_title, lesson_num)
+            if key not in seen:
+                seen.add(key)
+                name = course_title
+                if lesson_num is not None:
+                    name += f" - Lesson {lesson_num}"
+                url = None
+                if lesson_num is not None:
+                    url = self.store.get_lesson_link(course_title, lesson_num)
+                sources.append({"name": name, "url": url})
 
         # Store sources for retrieval
         self.last_sources = sources

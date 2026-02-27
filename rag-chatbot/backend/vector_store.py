@@ -259,7 +259,7 @@ class VectorStore:
                     lessons = json.loads(lessons_json)
                     # Find the lesson with matching number
                     for lesson in lessons:
-                        if lesson.get('lesson_number') == lesson_number:
+                        if int(lesson.get('lesson_number', -1)) == int(lesson_number):
                             return lesson.get('lesson_link')
             return None
         except Exception as e:
